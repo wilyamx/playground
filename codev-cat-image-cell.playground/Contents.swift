@@ -27,9 +27,27 @@ class UICollectionViewCell {
     }
 }
 
+class CatImageModel: CatImageCellModel {
+    var placeholderImage: UIImage {
+        return UIImage()
+    }
+    
+    func fetchCatImage(completion: @escaping (Result<UIImage, ImageFetchingError>) -> ()) {
+        // success response
+        //let image = UIImage()
+        //completion(Result.success(image))
+        
+        // failure response
+        completion(Result.failure(.timeout))
+    }
+}
+
 final class CatImageCell: UICollectionViewCell {
     private var imageView: UIImageView!
+    private var retryCount: Int = 0
 
+    private let RETRY_MAX: Int = 2
+    
     convenience init(imageView: UIImageView) {
         self.init()
         self.imageView = imageView
@@ -38,6 +56,7 @@ final class CatImageCell: UICollectionViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         self.imageView.image = nil
+        self.retryCount = 0
     }
     
     func set(model: CatImageCellModel) {
@@ -46,12 +65,17 @@ final class CatImageCell: UICollectionViewCell {
             
             case .success(let image):
                 self.imageView.image = image
+                print("success!")
                 
             case .failure(let error):
                 
                 switch error {
                 case .timeout:
-                    break
+                    if self.retryCount < self.RETRY_MAX {
+                        self.retryCount += 1
+                        print("retry")
+                        self.set(model: model)
+                    }
                 case .unknown:
                     self.imageView.image = model.placeholderImage
                 }
@@ -59,3 +83,9 @@ final class CatImageCell: UICollectionViewCell {
         })
     }
 }
+
+let model = CatImageModel()
+
+var cell = CatImageCell(imageView: UIImageView())
+cell.prepareForReuse()
+cell.set(model: model)
